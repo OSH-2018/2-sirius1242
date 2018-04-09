@@ -57,6 +57,7 @@ int main() {
             /* 子进程 */
             execvp(args[0], args);
             /* execvp失败 */
+						fprintf(stderr, "%s: command not found\n", args[0]);
             return 255;
         }
         /* 父进程 */
