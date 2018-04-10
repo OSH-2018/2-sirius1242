@@ -13,10 +13,8 @@ int main() {
 	/* 命令行拆解成的各部分，以空指针结尾 */
 	char *args[128];
 	char *arg;
-	char *_pipe, **__pipe;
-	int k, l;
-	int i;
-	int fd[2];
+	char *_pipe;
+	int i, k;
 	while (1) {
 		/* 提示符 */
 		printf("# ");
@@ -26,7 +24,10 @@ int main() {
 		for (i = 0; cmd[i] != '\n'; i++);
 		cmd[i] = '\0';
 		/* 拆解命令行 */
-		cmds = strdup(cmd);
+		if (i==0)
+			continue;
+		cmds = strdup(strtok(cmd, "|"));
+		_pipe = strtok(NULL, "|");
 		arg = strtok(cmd, " \t");
 		i = 0;
 		while (arg != NULL)
@@ -83,18 +84,21 @@ int main() {
 		if (strcmp(args[0], "exit") == 0)
 			return 0;
 
-		/* 外部命令 */
-		if (!(strchr(cmds, '|')==NULL))
+		if (_pipe != NULL)
 		{
-			for (i=0; i<k; i++)
-				if(!strcmp(args[i], "|"))
-				{
-					free(args[i]);
-					args[i] = NULL;
-					l = i;
-					_pipe = args[i+1];
-					__pipe = &_pipe;
-				}
+			int fd[2];
+			char *pipes[256];
+			arg = strtok(_pipe, " \t");
+			i = 0;
+			while (arg != NULL)
+			{
+				pipes[i] = strdup(arg);
+				arg = strtok(NULL, " \t");
+				i++;
+			}
+			pipes[i] = NULL;
+			k = i;
+			puts(_pipe);
 			pid_t childPid;
 			if (pipe(fd) != 0)
 			{
@@ -106,7 +110,7 @@ int main() {
 				perror("failed to fork\n");
 				continue;
 			}
-			if(childPid == 0)
+			if (childPid == 0)
 			{
 				dup2(fd[1], 1);
 				close(fd[0]);
@@ -120,11 +124,12 @@ int main() {
 				dup2(fd[0], 0);
 				close(fd[0]);
 				close(fd[1]);
-				execvp(_pipe, __pipe);
+				execvp(pipes[0], pipes);
 				perror("failed to exec command 2");
 				continue;
 			}
 		}
+		/* 外部命令 */
 		pid_t pid = fork();
 		if (pid == 0) {
 			/* 子进程 */
