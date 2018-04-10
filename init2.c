@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+extern char **environ;
 
 int main() {
 	/* 输入的命令行 */
@@ -12,8 +13,8 @@ int main() {
 	/* 命令行拆解成的各部分，以空指针结尾 */
 	char *args[128];
 	char *arg;
-	char *_pipe;
-	int k;
+	char *_pipe, **__pipe;
+	int k, l;
 	int i;
 	int fd[2];
 	while (1) {
@@ -52,11 +53,26 @@ int main() {
 			puts(getcwd(wd, 4096));
 			continue;
 		}
+		if (strcmp(args[0], "env") == 0) {
+			for(char **env = environ; *env != 0; env++)
+			{
+				char *thisEnv = *env;
+				puts(thisEnv);
+			}
+			continue;
+		}
+		if ((strcmp(args[0], "echo") == 0) && (args[1][0]=='$')) {
+			memmove(args[1], args[1]+1, strlen(args[1]));
+			if(getenv(args[1]) != NULL)
+				puts(getenv(args[1]));
+			else
+				printf("\n");
+			continue;
+		}
 		if (strcmp(args[0], "exit") == 0)
 			return 0;
 
 		/* 外部命令 */
-		printf("%d\n", (strchr(cmds, '|')==NULL));
 		if (!(strchr(cmds, '|')==NULL))
 		{
 			for (i=0; i<k; i++)
@@ -64,7 +80,9 @@ int main() {
 				{
 					free(args[i]);
 					args[i] = NULL;
+					l = i;
 					_pipe = args[i+1];
+					__pipe = &_pipe;
 				}
 			pid_t childPid;
 			if (pipe(fd) != 0)
@@ -91,7 +109,7 @@ int main() {
 				dup2(fd[0], 0);
 				close(fd[0]);
 				close(fd[1]);
-				execvp(_pipe, args);
+				execvp(_pipe, __pipe);
 				perror("failed to exec command 2");
 				continue;
 			}
