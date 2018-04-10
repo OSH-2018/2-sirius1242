@@ -69,6 +69,17 @@ int main() {
 				printf("\n");
 			continue;
 		}
+		if (strcmp(args[0], "export") == 0) {
+			char *var = strtok(args[1], "=");
+			char *name;
+			name = strdup(var);
+			var = strtok(NULL, "=");
+			//val = strdup(var);
+			setenv(name, var, 1);
+			var = strtok(NULL, "=");
+			free(name);
+			continue;
+		}
 		if (strcmp(args[0], "exit") == 0)
 			return 0;
 
