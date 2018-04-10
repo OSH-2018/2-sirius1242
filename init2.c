@@ -41,17 +41,28 @@ int main() {
 
 		/* 没有输入命令 */
 		if (!args[0])
+		{
+			for(i=0;i<k;i++)
+				free(args[i]);
+			free(cmds);;
 			continue;
+		}
 
 		/* 内建命令 */
 		if (strcmp(args[0], "cd") == 0) {
 			if (args[1])
 				chdir(args[1]);
+			for(i=0;i<k;i++)
+				free(args[i]);
+			free(cmds);;
 			continue;
 		}
 		if (strcmp(args[0], "pwd") == 0) {
 			char wd[4096];
 			puts(getcwd(wd, 4096));
+			for(i=0;i<k;i++)
+				free(args[i]);
+			free(cmds);;
 			continue;
 		}
 		if (strcmp(args[0], "env") == 0) {
@@ -60,6 +71,9 @@ int main() {
 				char *thisEnv = *env;
 				puts(thisEnv);
 			}
+			for(i=0;i<k;i++)
+				free(args[i]);
+			free(cmds);;
 			continue;
 		}
 		if ((strcmp(args[0], "echo") == 0) && (args[1][0]=='$')) {
@@ -68,6 +82,9 @@ int main() {
 				puts(getenv(args[1]));
 			else
 				printf("\n");
+			for(i=0;i<k;i++)
+				free(args[i]);
+			free(cmds);;
 			continue;
 		}
 		if (strcmp(args[0], "export") == 0) {
@@ -79,10 +96,17 @@ int main() {
 			setenv(name, var, 1);
 			var = strtok(NULL, "=");
 			free(name);
+			for(i=0;i<k;i++)
+				free(args[i]);
+			free(cmds);;
 			continue;
 		}
-		if (strcmp(args[0], "exit") == 0)
+		if (strcmp(args[0], "exit") == 0){
+			for(i=0;i<k;i++)
+				free(args[i]);
+			free(cmds);;
 			return 0;
+		}
 
 		if (_pipe != NULL)
 		{
@@ -103,12 +127,10 @@ int main() {
 			if (pipe(fd) != 0)
 			{
 				perror("failed to create pipe\n");
-				continue;
 			}
 			if ((childPid = fork()) == 01)
 			{
 				perror("failed to fork\n");
-				continue;
 			}
 			if (childPid == 0)
 			{
@@ -117,7 +139,8 @@ int main() {
 				close(fd[1]);
 				execvp(args[0], args);
 				perror("failed to exec command 1");
-				continue;
+				return 255;
+				wait(NULL);
 			}
 			else
 			{
@@ -126,8 +149,13 @@ int main() {
 				close(fd[1]);
 				execvp(pipes[0], pipes);
 				perror("failed to exec command 2");
-				continue;
+				return 255;
+				wait(NULL);
 			}
+			for(i=0;i<k;i++)
+				free(args[i]);
+			free(cmds);;
+			continue;
 		}
 		/* 外部命令 */
 		pid_t pid = fork();
