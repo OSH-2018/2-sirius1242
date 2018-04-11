@@ -6,6 +6,52 @@
 #include <sys/types.h>
 extern char **environ;
 
+int inner(char *args[]) { //内建命令
+	/* 没有输入命令 */
+	if (!args[0])
+		return 1;
+
+	/* 内建命令 */
+	if (strcmp(args[0], "cd") == 0) {
+		if (args[1])
+			if(chdir(args[1]))
+				fprintf(stderr, "cd: no such file or directory: %s\n", args[1]);
+		return 1;
+	}
+	if (strcmp(args[0], "pwd") == 0) {
+		char wd[4096];
+		puts(getcwd(wd, 4096));
+		return 1;
+	}
+	if (strcmp(args[0], "env") == 0) {
+		for(char **env = environ; *env != 0; env++)
+		{
+			char *thisEnv = *env;
+			puts(thisEnv);
+		}
+		return 1;
+	}
+	if ((strcmp(args[0], "echo") == 0) && (args[1][0]=='$')) {
+		memmove(args[1], args[1]+1, strlen(args[1]));
+		if(getenv(args[1]) != NULL)
+			puts(getenv(args[1]));
+		else
+			printf("\n");
+		return 1;
+	}
+	if (strcmp(args[0], "export") == 0) {
+		char *var = strtok(args[1], "=");
+		char *name;
+		name = strdup(var);
+		var = strtok(NULL, "=");
+		//val = strdup(var);
+		setenv(name, var, 1);
+		var = strtok(NULL, "=");
+		free(name);
+		return 1;
+	}
+	return 0;
+}
 int main() {
 	/* 输入的命令行 */
 	char cmd[256];
@@ -39,68 +85,7 @@ int main() {
 		args[i] = NULL;
 		k = i;
 
-		/* 没有输入命令 */
-		if (!args[0])
-		{
-			for(i=0;i<k;i++)
-				free(args[i]);
-			free(cmds);;
-			continue;
-		}
-
-		/* 内建命令 */
-		if (strcmp(args[0], "cd") == 0) {
-			if (args[1])
-				chdir(args[1]);
-			for(i=0;i<k;i++)
-				free(args[i]);
-			free(cmds);;
-			continue;
-		}
-		if (strcmp(args[0], "pwd") == 0) {
-			char wd[4096];
-			puts(getcwd(wd, 4096));
-			for(i=0;i<k;i++)
-				free(args[i]);
-			free(cmds);;
-			continue;
-		}
-		if (strcmp(args[0], "env") == 0) {
-			for(char **env = environ; *env != 0; env++)
-			{
-				char *thisEnv = *env;
-				puts(thisEnv);
-			}
-			for(i=0;i<k;i++)
-				free(args[i]);
-			free(cmds);;
-			continue;
-		}
-		if ((strcmp(args[0], "echo") == 0) && (args[1][0]=='$')) {
-			memmove(args[1], args[1]+1, strlen(args[1]));
-			if(getenv(args[1]) != NULL)
-				puts(getenv(args[1]));
-			else
-				printf("\n");
-			for(i=0;i<k;i++)
-				free(args[i]);
-			free(cmds);;
-			continue;
-		}
-		if (strcmp(args[0], "export") == 0) {
-			char *var = strtok(args[1], "=");
-			char *name;
-			name = strdup(var);
-			var = strtok(NULL, "=");
-			//val = strdup(var);
-			setenv(name, var, 1);
-			var = strtok(NULL, "=");
-			free(name);
-			for(i=0;i<k;i++)
-				free(args[i]);
-			free(cmds);;
-			continue;
-		}
+		/*退出*/
 		if (strcmp(args[0], "exit") == 0){
 			for(i=0;i<k;i++)
 				free(args[i]);
@@ -122,13 +107,12 @@ int main() {
 			}
 			pipes[i] = NULL;
 			k = i;
-			puts(_pipe);
 			pid_t childPid;
 			if (pipe(fd) != 0)
 			{
 				perror("failed to create pipe\n");
 			}
-			if ((childPid = fork()) == 01)
+			if ((childPid = fork()) == -1)
 			{
 				perror("failed to fork\n");
 			}
@@ -157,6 +141,14 @@ int main() {
 			free(cmds);;
 			continue;
 		}
+
+		if(inner(args))
+		{
+			for(i=0;i<k;i++)
+				free(args[i]);
+			free(cmds);
+			continue;
+		}
 		/* 外部命令 */
 		pid_t pid = fork();
 		if (pid == 0) {
@@ -168,8 +160,5 @@ int main() {
 		}
 		/* 父进程 */
 		wait(NULL);
-		for(i=0;i<k;i++)
-			free(args[i]);
-		free(cmds);
 	}
 }
