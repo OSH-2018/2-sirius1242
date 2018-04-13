@@ -108,50 +108,56 @@ int main() {
 			pipes[i] = NULL;
 			k = i;
 			pid_t childPid;
-			if (pipe(fd) != 0)
+			if (pipe(fd) == -1)
 			{
 				perror("failed to create pipe\n");
 			}
-			if ((childPid = fork()) == -1)
-			{
-				perror("failed to fork\n");
-			}
+			//switch (fork())
+			//{
+			//case -1:
+			//	perror("failed to fork\n");
+			//	continue;
+			//	;
+			childPid = fork();
 			if (childPid == 0)
 			{
 				dup2(fd[1], 1);
 				close(fd[0]);
-				close(fd[1]);
+				//close(fd[1]);
 				execvp(args[0], args);
 				perror("failed to exec command 1");
-				return 255;
-				wait(NULL);
+				continue;
 			}
-			else
+			childPid = fork();
+			if(childPid == 0)
 			{
 				dup2(fd[0], 0);
-				close(fd[0]);
 				close(fd[1]);
+				//close(fd[0]);
 				execvp(pipes[0], pipes);
 				perror("failed to exec command 2");
-				return 255;
-				wait(NULL);
+				continue;
 			}
-			for(i=0;i<k;i++)
+			close(fd[0]);
+			close(fd[1]);
+			for (i = 0; i < k; i++)
 				free(args[i]);
-			free(cmds);;
+			free(cmds);
+			;
 			continue;
 		}
 
-		if(inner(args))
+		if (inner(args))
 		{
-			for(i=0;i<k;i++)
+			for (i = 0; i < k; i++)
 				free(args[i]);
 			free(cmds);
 			continue;
 		}
 		/* 外部命令 */
 		pid_t pid = fork();
-		if (pid == 0) {
+		if (pid == 0)
+		{
 			/* 子进程 */
 			execvp(args[0], args);
 			/* execvp失败 */
