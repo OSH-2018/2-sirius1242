@@ -8,9 +8,21 @@
 #define MAX_PIPE 256
 extern char **environ;
 
-int inner(char *args[])
+int inner(char *_pipe)
 { //内建命令
 	/* 没有输入命令 */
+	char *arg;
+	char *args[MAX_LEN];
+	int i=0;
+	arg = strtok(_pipe, " \t");
+	while (arg != NULL)
+	{
+		args[i] = strdup(arg);
+		arg = strtok(NULL, " \t");
+		i++;
+	}
+	args[i] = NULL;
+
 	if (!args[0])
 		return 1;
 
@@ -78,17 +90,9 @@ int exec_pipe(char **_pipe, int j)
 	}
 	pipes[i] = NULL;
 	k = i;
-	//if (pipe(fd) == -1)
-	//{
-	//	perror("failed to create pipe\n");
-	//}
-	//switch (fork())
-	//
-	//case -1:
-	//	perror("failed to fork\n");
-	//	continue;
-	//	;
-	if (_pipe[j + 1] == NULL) // not the last command
+	//for (i = 0; i <= k; i++)
+	//	fprintf(stderr, "%s\n", pipes[i]);
+	if (_pipe[j + 1] == NULL) // the last command
 	{
 		execvp(pipes[0], pipes);
 	}
@@ -144,49 +148,34 @@ int main()
 		l = i;
 		int fd[2];
 		_pipe[i] = NULL;
-		//arg = strtok(cmd, " \t");
-		//i = 0;
-		//while (arg != NULL)
-		//{
-		//	args[i] = strdup(arg);
-		//	arg = strtok(NULL, " \t");
-		//	i++;
-		//}
-		//args[i] = NULL;
-		//k = i;
 
-		///*退出*/
-		//if (strcmp(args[0], "exit") == 0){
-		//	for(i=0;i<k;i++)
-		//		free(args[i]);
-		//	free(cmds);;
-		//	return 0;
-		//}
-
-		childPid = fork();
-		if (childPid == 0)
-			exec_pipe(_pipe, 0);
-
-		if (inner(args))
+		if (inner(_pipe[0]))
 		{
 			for (i = 0; i < k; i++)
 				free(args[i]);
 			free(cmds);
 			continue;
 		}
-		/* 外部命令 */
-		pid_t pid = fork();
-		if (pid == 0)
+		else
 		{
-			/* 子进程 */
-			execvp(args[0], args);
-			/* execvp失败 */
-			perror(args[0]);
-			//fprintf(stderr, "%s: command not found\n", args[0]);
-			return 255;
+			childPid = fork();
+			if (childPid == 0)
+				exec_pipe(_pipe, 0);
+			waitpid(childPid, NULL, 0);
 		}
+		/* 外部命令 */
+		//pid_t pid = fork();
+		//if (pid == 0)
+		//{
+		//	/* 子进程 */
+		//	execvp(args[0], args);
+		//	/* execvp失败 */
+		//	perror(args[0]);
+		//	//fprintf(stderr, "%s: command not found\n", args[0]);
+		//	return 255;
+		//}
 
 		/* 父进程 */
-		wait(NULL);
+		//wait(NULL);
 	}
 }
