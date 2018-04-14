@@ -66,7 +66,6 @@ int inner(char *_pipe)
 		char *name;
 		name = strdup(var);
 		var = strtok(NULL, "=");
-		//val = strdup(var);
 		setenv(name, var, 1);
 		var = strtok(NULL, "=");
 		free(name);
@@ -90,8 +89,6 @@ int exec_pipe(char **_pipe, int j)
 	}
 	pipes[i] = NULL;
 	k = i;
-	//for (i = 0; i <= k; i++)
-	//	fprintf(stderr, "%s\n", pipes[i]);
 	if (_pipe[j + 1] == NULL) // the last command
 	{
 		execvp(pipes[0], pipes);
@@ -130,8 +127,7 @@ int main()
 		fgets(cmd, MAX_LEN, stdin);
 		pid_t childPid;
 		/* 清理结尾的换行符 */
-		for (i = 0; cmd[i] != '\n'; i++)
-			;
+		for (i = 0; cmd[i] != '\n'; i++);
 		cmd[i] = '\0';
 		/* 拆解命令行 */
 		if (i == 0)
@@ -149,11 +145,11 @@ int main()
 		int fd[2];
 		_pipe[i] = NULL;
 
-		if (inner(_pipe[0]))
+		if (inner(strdup(_pipe[0])))
 		{
-			for (i = 0; i < k; i++)
-				free(args[i]);
-			free(cmds);
+			//for (i = 0; i < k; i++)
+			//	free(args[i]);
+			//free(cmds);
 			continue;
 		}
 		else
