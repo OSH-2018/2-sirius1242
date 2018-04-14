@@ -4,42 +4,52 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#define MAX_LEN 256
+#define MAX_PIPE 256
 extern char **environ;
 
-int inner(char *args[]) { //内建命令
+int inner(char *args[])
+{ //内建命令
 	/* 没有输入命令 */
 	if (!args[0])
 		return 1;
 
 	/* 内建命令 */
-	if (strcmp(args[0], "cd") == 0) {
+	if (strcmp(args[0], "exit") == 0)
+		exit(0);
+	if (strcmp(args[0], "cd") == 0)
+	{
 		if (args[1])
-			if(chdir(args[1]))
+			if (chdir(args[1]))
 				fprintf(stderr, "cd: no such file or directory: %s\n", args[1]);
 		return 1;
 	}
-	if (strcmp(args[0], "pwd") == 0) {
+	if (strcmp(args[0], "pwd") == 0)
+	{
 		char wd[4096];
 		puts(getcwd(wd, 4096));
 		return 1;
 	}
-	if (strcmp(args[0], "env") == 0) {
-		for(char **env = environ; *env != 0; env++)
+	if (strcmp(args[0], "env") == 0)
+	{
+		for (char **env = environ; *env != 0; env++)
 		{
 			char *thisEnv = *env;
 			puts(thisEnv);
 		}
 		return 1;
 	}
-	if ((strcmp(args[0], "echo") == 0) && (args[1][0]=='$')) {
-		memmove(args[1], args[1]+1, strlen(args[1]));
-		if(getenv(args[1]) != NULL)
+	if ((strcmp(args[0], "echo") == 0) && (args[1][0] == '$'))
+	{
+		memmove(args[1], args[1] + 1, strlen(args[1]));
+		if (getenv(args[1]) != NULL)
 			puts(getenv(args[1]));
 		else
 			printf("\n");
 		return 1;
 	}
-	if (strcmp(args[0], "export") == 0) {
+	if (strcmp(args[0], "export") == 0)
+	{
 		char *var = strtok(args[1], "=");
 		char *name;
 		name = strdup(var);
@@ -52,100 +62,110 @@ int inner(char *args[]) { //内建命令
 	}
 	return 0;
 }
-int main() {
+int exec_pipe(char **_pipe, int j)
+{
+	char *pipes[MAX_LEN];
+	int prev_read = -1;
+	char *arg;
+	int i, k;
+	arg = strtok(_pipe[j], " \t");
+	i = 0;
+	while (arg != NULL)
+	{
+		pipes[i] = strdup(arg);
+		arg = strtok(NULL, " \t");
+		i++;
+	}
+	pipes[i] = NULL;
+	k = i;
+	//if (pipe(fd) == -1)
+	//{
+	//	perror("failed to create pipe\n");
+	//}
+	//switch (fork())
+	//
+	//case -1:
+	//	perror("failed to fork\n");
+	//	continue;
+	//	;
+	if (_pipe[j + 1] == NULL) // not the last command
+	{
+		execvp(pipes[0], pipes);
+	}
+	int fd[2];
+	pipe(fd);
+	if (fork() == 0)
+	{
+		dup2(fd[1], 1);
+		close(fd[0]);
+		close(fd[1]);
+		execvp(pipes[0], pipes);
+	}
+	dup2(fd[0], 0);
+	close(fd[0]);
+	close(fd[1]);
+	for (i = 0; i <= k; i++)
+		free(pipes[i]);
+	exec_pipe(_pipe, j+1);
+}
+int main()
+{
 	/* 输入的命令行 */
-	char cmd[256];
+	char cmd[MAX_LEN];
 	char *cmds;
 	/* 命令行拆解成的各部分，以空指针结尾 */
 	char *args[128];
 	char *arg;
-	char *_pipe;
-	int i, k;
-	while (1) {
+	char *_pipe[MAX_PIPE];
+	int i, k, j, l;
+	while (1)
+	{
 		/* 提示符 */
 		printf("# ");
 		fflush(stdin);
-		fgets(cmd, 256, stdin);
+		fgets(cmd, MAX_LEN, stdin);
+		pid_t childPid;
 		/* 清理结尾的换行符 */
-		for (i = 0; cmd[i] != '\n'; i++);
+		for (i = 0; cmd[i] != '\n'; i++)
+			;
 		cmd[i] = '\0';
 		/* 拆解命令行 */
-		if (i==0)
+		if (i == 0)
 			continue;
-		cmds = strdup(strtok(cmd, "|"));
-		_pipe = strtok(NULL, "|");
-		arg = strtok(cmd, " \t");
 		i = 0;
-		while (arg != NULL)
+		cmds = strtok(cmd, "|");
+		//_pipe = strtok(NULL, "|");
+		while (cmds != NULL)
 		{
-			args[i] = strdup(arg);
-			arg = strtok(NULL, " \t");
+			_pipe[i] = strdup(cmds);
+			cmds = strtok(NULL, "|");
 			i++;
 		}
-		args[i] = NULL;
-		k = i;
+		l = i;
+		int fd[2];
+		_pipe[i] = NULL;
+		//arg = strtok(cmd, " \t");
+		//i = 0;
+		//while (arg != NULL)
+		//{
+		//	args[i] = strdup(arg);
+		//	arg = strtok(NULL, " \t");
+		//	i++;
+		//}
+		//args[i] = NULL;
+		//k = i;
 
-		/*退出*/
-		if (strcmp(args[0], "exit") == 0){
-			for(i=0;i<k;i++)
-				free(args[i]);
-			free(cmds);;
-			return 0;
-		}
+		///*退出*/
+		//if (strcmp(args[0], "exit") == 0){
+		//	for(i=0;i<k;i++)
+		//		free(args[i]);
+		//	free(cmds);;
+		//	return 0;
+		//}
 
-		if (_pipe != NULL)
-		{
-			int fd[2];
-			char *pipes[256];
-			arg = strtok(_pipe, " \t");
-			i = 0;
-			while (arg != NULL)
-			{
-				pipes[i] = strdup(arg);
-				arg = strtok(NULL, " \t");
-				i++;
-			}
-			pipes[i] = NULL;
-			k = i;
-			pid_t childPid;
-			if (pipe(fd) == -1)
-			{
-				perror("failed to create pipe\n");
-			}
-			//switch (fork())
-			//{
-			//case -1:
-			//	perror("failed to fork\n");
-			//	continue;
-			//	;
-			childPid = fork();
-			if (childPid == 0)
-			{
-				dup2(fd[1], 1);
-				close(fd[0]);
-				//close(fd[1]);
-				execvp(args[0], args);
-				perror("failed to exec command 1");
-				continue;
-			}
-			childPid = fork();
-			if(childPid == 0)
-			{
-				dup2(fd[0], 0);
-				close(fd[1]);
-				//close(fd[0]);
-				execvp(pipes[0], pipes);
-				perror("failed to exec command 2");
-				continue;
-			}
-			close(fd[0]);
-			close(fd[1]);
-			for (i = 0; i < k; i++)
-				free(args[i]);
-			free(cmds);
-			;
-			continue;
-		}
+		childPid = fork();
+		if (childPid == 0)
+			exec_pipe(_pipe, 0);
 
 		if (inner(args))
 		{
@@ -161,9 +181,11 @@ int main() {
 			/* 子进程 */
 			execvp(args[0], args);
 			/* execvp失败 */
-			fprintf(stderr, "%s: command not found\n", args[0]);
+			perror(args[0]);
+			//fprintf(stderr, "%s: command not found\n", args[0]);
 			return 255;
 		}
+
 		/* 父进程 */
 		wait(NULL);
 	}
