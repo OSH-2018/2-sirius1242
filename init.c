@@ -8,9 +8,8 @@
 #define MAX_PIPE 256
 extern char **environ;
 
-int inner(char *_pipe)
-{ //内建命令
-	/* 没有输入命令 */
+int inner(char *_pipe) //内建命令
+{ 
 	char *arg;
 	char *args[MAX_LEN];
 	int i=0;
@@ -23,6 +22,7 @@ int inner(char *_pipe)
 	}
 	args[i] = NULL;
 
+	/* 没有输入命令 */
 	if (!args[0])
 		return 1;
 
@@ -92,6 +92,8 @@ int exec_pipe(char **_pipe, int j)
 	if (_pipe[j + 1] == NULL) // the last command
 	{
 		execvp(pipes[0], pipes);
+		perror(pipes[0]);
+		exit(1);
 	}
 	int fd[2];
 	pipe(fd);
@@ -101,6 +103,8 @@ int exec_pipe(char **_pipe, int j)
 		close(fd[0]);
 		close(fd[1]);
 		execvp(pipes[0], pipes);
+		perror(pipes[0]);
+		exit(1);
 	}
 	dup2(fd[0], 0);
 	close(fd[0]);
@@ -146,12 +150,7 @@ int main()
 		_pipe[i] = NULL;
 
 		if (inner(strdup(_pipe[0])))
-		{
-			//for (i = 0; i < k; i++)
-			//	free(args[i]);
-			//free(cmds);
 			continue;
-		}
 		else
 		{
 			childPid = fork();
@@ -159,19 +158,5 @@ int main()
 				exec_pipe(_pipe, 0);
 			waitpid(childPid, NULL, 0);
 		}
-		/* 外部命令 */
-		//pid_t pid = fork();
-		//if (pid == 0)
-		//{
-		//	/* 子进程 */
-		//	execvp(args[0], args);
-		//	/* execvp失败 */
-		//	perror(args[0]);
-		//	//fprintf(stderr, "%s: command not found\n", args[0]);
-		//	return 255;
-		//}
-
-		/* 父进程 */
-		//wait(NULL);
 	}
 }
