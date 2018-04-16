@@ -8,10 +8,10 @@
 #define MAX_PIPE 256
 extern char **environ;
 
-int inner(char *_pipe) //内建命令
-{ 
+int apart(char *_pipe, char *args[MAX_LEN])
+{
 	char *arg;
-	char *args[MAX_LEN];
+	//char *args[MAX_LEN];
 	int i=0;
 	arg = strtok(_pipe, " \t");
 	while (arg != NULL)
@@ -21,7 +21,11 @@ int inner(char *_pipe) //内建命令
 		i++;
 	}
 	args[i] = NULL;
+	return i;
+}
 
+int inner(char *args[]) //内建命令
+{ 
 	/* 没有输入命令 */
 	if (!args[0])
 		return 1;
@@ -32,8 +36,13 @@ int inner(char *_pipe) //内建命令
 	if (strcmp(args[0], "cd") == 0)
 	{
 		if (args[1])
+		{
 			if (chdir(args[1]))
 				fprintf(stderr, "cd: no such file or directory: %s\n", args[1]);
+		}
+		else
+			if(chdir(getenv("HOME")))
+				perror("HOME");
 		return 1;
 	}
 	if (strcmp(args[0], "pwd") == 0)
@@ -79,16 +88,7 @@ int exec_pipe(char **_pipe, int j)
 	int prev_read = -1;
 	char *arg;
 	int i, k;
-	arg = strtok(_pipe[j], " \t");
-	i = 0;
-	while (arg != NULL)
-	{
-		pipes[i] = strdup(arg);
-		arg = strtok(NULL, " \t");
-		i++;
-	}
-	pipes[i] = NULL;
-	k = i;
+	k = apart(_pipe[j], pipes);
 	if (_pipe[j + 1] == NULL) // the last command
 	{
 		execvp(pipes[0], pipes);
@@ -102,6 +102,8 @@ int exec_pipe(char **_pipe, int j)
 		dup2(fd[1], 1);
 		close(fd[0]);
 		close(fd[1]);
+		if(inner(pipes))
+			exit(0);
 		execvp(pipes[0], pipes);
 		perror(pipes[0]);
 		exit(1);
@@ -118,6 +120,7 @@ int main()
 	/* 输入的命令行 */
 	char cmd[MAX_LEN];
 	char *cmds;
+	char *tmp[MAX_LEN];
 	/* 命令行拆解成的各部分，以空指针结尾 */
 	char *args[128];
 	char *arg;
@@ -148,15 +151,15 @@ int main()
 		l = i;
 		int fd[2];
 		_pipe[i] = NULL;
-
-		if (inner(strdup(_pipe[0])))
-			continue;
-		else
+		if (i==1)
 		{
-			childPid = fork();
-			if (childPid == 0)
-				exec_pipe(_pipe, 0);
-			waitpid(childPid, NULL, 0);
+			apart(strdup(_pipe[0]), tmp);
+			if (inner(tmp))
+				continue;
 		}
+		childPid = fork();
+		if (childPid == 0)
+			exec_pipe(_pipe, 0);
+		waitpid(childPid, NULL, 0);
 	}
 }

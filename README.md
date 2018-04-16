@@ -4,3 +4,4 @@
 - support pipe (required)
 - support environment variable check and modify (required)
 - support check certain variable (for example: `echo $PATH`)
+- support if cd have no args, execute `cd $HOME` instead.
