@@ -5,3 +5,4 @@
 - support environment variable check and modify (required)
 - support check certain variable (for example: `echo $PATH`)
 - support if cd have no args, execute `cd $HOME` instead.
+- support `unset` command to remove a environment variable

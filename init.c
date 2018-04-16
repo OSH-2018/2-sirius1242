@@ -8,10 +8,9 @@
 #define MAX_PIPE 256
 extern char **environ;
 
-int apart(char *_pipe, char *args[MAX_LEN])
+int apart(char *_pipe, char *args[MAX_LEN]) // apart every command part departed by pipe
 {
 	char *arg;
-	//char *args[MAX_LEN];
 	int i=0;
 	arg = strtok(_pipe, " \t");
 	while (arg != NULL)
@@ -40,9 +39,9 @@ int inner(char *args[]) //内建命令
 			if (chdir(args[1]))
 				fprintf(stderr, "cd: no such file or directory: %s\n", args[1]);
 		}
-		else
+		else // if no args for `cd`
 			if(chdir(getenv("HOME")))
-				perror("HOME");
+				fprintf(stderr, "please confirm your HOME variable set correctly!\n");
 		return 1;
 	}
 	if (strcmp(args[0], "pwd") == 0)
@@ -75,9 +74,17 @@ int inner(char *args[]) //内建命令
 		char *name;
 		name = strdup(var);
 		var = strtok(NULL, "=");
-		setenv(name, var, 1);
+		if(var != NULL)
+			setenv(name, var, 1);
+		else
+			setenv(name, "", 1);
 		var = strtok(NULL, "=");
 		free(name);
+		return 1;
+	}
+	if (strcmp(args[0], "unset") == 0)
+	{
+		unsetenv(args[1]);
 		return 1;
 	}
 	return 0;
@@ -102,7 +109,7 @@ int exec_pipe(char **_pipe, int j)
 		dup2(fd[1], 1);
 		close(fd[0]);
 		close(fd[1]);
-		if(inner(pipes))
+		if(inner(pipes)) //check if the first command is inner command
 			exit(0);
 		execvp(pipes[0], pipes);
 		perror(pipes[0]);
@@ -141,7 +148,6 @@ int main()
 			continue;
 		i = 0;
 		cmds = strtok(cmd, "|");
-		//_pipe = strtok(NULL, "|");
 		while (cmds != NULL)
 		{
 			_pipe[i] = strdup(cmds);
@@ -151,7 +157,7 @@ int main()
 		l = i;
 		int fd[2];
 		_pipe[i] = NULL;
-		if (i==1)
+		if (i==1) // if no pipe symbol
 		{
 			apart(strdup(_pipe[0]), tmp);
 			if (inner(tmp))
@@ -160,6 +166,6 @@ int main()
 		childPid = fork();
 		if (childPid == 0)
 			exec_pipe(_pipe, 0);
-		waitpid(childPid, NULL, 0);
+		waitpid(childPid, NULL, 0); // wait for child
 	}
 }
